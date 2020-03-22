@@ -7,7 +7,7 @@ import {
 } from "./convert";
 import { evalMultiLinearMaster, evalMultiLinearMasterDim } from "./eval";
 import { regularizeMultiLinearMasterDim } from "./regularize";
-import { SCALAR } from "./constants";
+import { SCALAR, noticeable } from "./constants";
 
 test("Dim conversion test 1", validateDim([-0.5, 1], [0.5, -1]));
 test("Dim conversion test 2", validateDim([-1, 0], [0, 0], [+1, 0]));
@@ -25,7 +25,7 @@ function validateDim(...pts: [number, number][]) {
 		for (let x = -0x100; x <= 0x100; x++) {
 			const yConverted = evalDimConversionResult(converted, x / 0x100);
 			const yOriginal = evalMultiLinearMasterDim(md, x / 0x100);
-			t.true(Math.abs(yConverted - yOriginal) * SCALAR < 1);
+			t.false(noticeable(yConverted - yOriginal));
 		}
 	};
 }
@@ -80,7 +80,7 @@ function validateMaster(...pts: [number, number][][]) {
 			for (let d = 0; d < mdRaw.length; d++) instance.set("axis" + d, 2 * Math.random() - 1);
 			const yConverted = evalMasterConversionResult(converted, instance);
 			const yOriginal = evalMultiLinearMaster(md, instance);
-			t.true(Math.abs(yConverted - yOriginal) < 1 / 0x10000);
+			t.false(noticeable(Math.abs(yConverted - yOriginal)));
 		}
 	};
 }
