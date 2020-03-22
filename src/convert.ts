@@ -56,8 +56,8 @@ function convertMasterImpl(
 	scalar: number,
 	carry: (OtMasterDim | null)[]
 ) {
+	if (!noticeable(scalar)) return;
 	if (n >= dims.length) {
-		if (!noticeable(scalar)) return;
 		const otDims: OtMasterDim[] = [];
 		for (const x of carry) if (x) otDims.push(x);
 		if (otDims.length) {
