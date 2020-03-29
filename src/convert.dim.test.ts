@@ -100,7 +100,8 @@ function validateMaster(...pts: [number, MultiLinearStop][][]) {
 	return (t: ExecutionContext<unknown>) => {
 		for (let m = 0; m < 1000; m++) {
 			let instance = new Map<string, number>();
-			for (let d = 0; d < mdRaw.length; d++) instance.set("axis" + d, 2 * Math.random() - 1);
+			for (let d = 0; d < mdRaw.length; d++)
+				instance.set("axis" + d, Math.round(0x4000 * (2 * Math.random() - 1)) / 0x4000);
 			const yConverted = evalMasterConversionResult(converted, instance);
 			const yOriginal = evalMultiLinearMaster(md, instance);
 			t.false(noticeable(Math.abs(yConverted - yOriginal)));
