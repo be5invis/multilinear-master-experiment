@@ -6,15 +6,16 @@ import {
 	MasterConversionResult,
 	MultiLinearMaster,
 	MultiLinearMasterDim,
-	OtMasterDim
+	OtMasterDim,
 } from "./interface";
 import { regularizeMultiLinearMasterDim } from "./regularize";
 
 export function convertDim(mdRaw: MultiLinearMasterDim): DimConversionResult {
 	const md = regularizeMultiLinearMasterDim(mdRaw);
+	// We assume it is continuous at -1, 0 and +1
 	const offset = normalize(evalMultiLinearMasterDim(md, 0));
-	const yNegative = normalize(md.points[0][1] - offset);
-	const yPositive = normalize(md.points[md.points.length - 1][1] - offset);
+	const yNegative = normalize(md.points[0][1].right - offset);
+	const yPositive = normalize(md.points[md.points.length - 1][1].left - offset);
 
 	let dims: [number, OtMasterDim][] = [];
 	if (yNegative) dims.push([yNegative, { axis: md.axis, min: -1, peak: -1, max: 0 }]);
@@ -23,13 +24,27 @@ export function convertDim(mdRaw: MultiLinearMasterDim): DimConversionResult {
 	for (let t = 1; t + 1 < md.points.length; t++) {
 		const x = md.points[t][0],
 			xPrev = md.points[t - 1][0],
-			xNext = md.points[t + 1][0],
-			y = md.points[t][1] - offset;
-
+			xNext = md.points[t + 1][0];
 		if (x <= -1 || x === 0 || x >= 1) continue;
 		if (xPrev < 0 && xNext > 0) throw new Error("Unreachable: span goes across 0");
-		const overflow = normalize(x < 0 ? y + yNegative * x : y - yPositive * x);
-		if (overflow) dims.push([overflow, { axis: md.axis, min: xPrev, peak: x, max: xNext }]);
+
+		const stop = md.points[t][1],
+			yLeft = stop.left - offset,
+			yRight = stop.right - offset;
+		const yBase = x < 0 ? -yNegative * x : yPositive * x,
+			yNonInclusive = stop.inclusive ? yLeft : yRight;
+
+		const overflowNonInclusive = yNonInclusive - yBase;
+		if (overflowNonInclusive) {
+			dims.push([overflowNonInclusive, { axis: md.axis, min: xPrev, peak: x, max: xNext }]);
+		}
+		if (stop.inclusive === 1) {
+			const overflow = yRight - yNonInclusive;
+			if (overflow) dims.push([overflow, { axis: md.axis, min: x, peak: x, max: xNext }]);
+		} else {
+			const overflow = yLeft - yNonInclusive;
+			if (overflow) dims.push([overflow, { axis: md.axis, min: xPrev, peak: x, max: x }]);
+		}
 	}
 
 	return { offset, dims };
@@ -38,6 +53,7 @@ export function convertDim(mdRaw: MultiLinearMasterDim): DimConversionResult {
 export function evalDimConversionResult(dr: DimConversionResult, x: number) {
 	let s = dr.offset;
 	for (const [scalar, md] of dr.dims) {
+		// console.log(scalar, x, md, evalOtMasterDim(md, x));
 		s += scalar * evalOtMasterDim(md, x);
 	}
 	return s;

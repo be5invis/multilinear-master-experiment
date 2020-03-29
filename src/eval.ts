@@ -3,7 +3,7 @@ import {
 	Instance,
 	OtMaster,
 	MultiLinearMasterDim,
-	MultiLinearMaster
+	MultiLinearMaster,
 } from "./interface";
 
 export function evalOtMaster(mx: OtMaster, instance: Instance) {
@@ -31,18 +31,18 @@ function isInvalidDim(ar: OtMasterDim) {
 	return ar.min > ar.peak || ar.peak > ar.max || (ar.min < 0 && ar.max > 0 && ar.peak !== 0);
 }
 
-export function evalMultiLinearMasterDim(md: MultiLinearMasterDim, x: number) {
+export function evalMultiLinearMasterDim(md: MultiLinearMasterDim, x: number): number {
 	if (!md.points.length) return 1;
-	if (x <= md.points[0][0]) return md.points[0][1];
-	if (x >= md.points[md.points.length - 1][0]) return md.points[md.points.length - 1][1];
+	if (x <= md.points[0][0]) return md.points[0][1].left;
+	if (x >= md.points[md.points.length - 1][0]) return md.points[md.points.length - 1][1].right;
 	for (let k = 1; k < md.points.length; k++) {
 		const xs = md.points[k - 1][0],
 			ys = md.points[k - 1][1];
 		const xf = md.points[k][0],
 			yf = md.points[k][1];
-		if (x === xs) return ys;
-		if (x === xf) return yf;
-		if (x > xs && x < xf) return ys + ((yf - ys) * (x - xs)) / (xf - xs);
+		if (x === xs && ys.inclusive === 1) return ys.right;
+		if (x === xf && yf.inclusive === 0) return yf.left;
+		if (x > xs && x < xf) return ys.right + ((yf.left - ys.right) * (x - xs)) / (xf - xs);
 	}
 	return 1;
 }
