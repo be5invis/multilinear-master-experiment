@@ -7,6 +7,8 @@ import {
 	MultiLinearMaster,
 	MultiLinearMasterDim,
 	OtMasterDim,
+	MultiLinearStop,
+	Axis,
 } from "./interface";
 import { regularizeMultiLinearMasterDim } from "./regularize";
 
@@ -24,30 +26,76 @@ export function convertDim(mdRaw: MultiLinearMasterDim): DimConversionResult {
 	for (let t = 1; t + 1 < md.points.length; t++) {
 		const x = md.points[t][0],
 			xPrev = md.points[t - 1][0],
-			xNext = md.points[t + 1][0];
-		if (x <= -1 || x === 0 || x >= 1) continue;
-		if (xPrev < 0 && xNext > 0) throw new Error("Unreachable: span goes across 0");
+			xNext = md.points[t + 1][0],
+			stop = md.points[t][1];
+		if (x <= -1 || x >= 1) continue;
+		if (x !== 0 && xPrev < 0 && xNext > 0) throw new Error("Unreachable: span goes across 0");
 
-		const stop = md.points[t][1],
-			yLeft = stop.left - offset,
-			yRight = stop.right - offset;
-		const yBase = x < 0 ? -yNegative * x : yPositive * x,
-			yNonInclusive = stop.inclusive ? yLeft : yRight;
-
-		const overflowNonInclusive = yNonInclusive - yBase;
-		if (overflowNonInclusive) {
-			dims.push([overflowNonInclusive, { axis: md.axis, min: xPrev, peak: x, max: xNext }]);
-		}
-		if (stop.inclusive === 1) {
-			const overflow = yRight - yNonInclusive;
-			if (overflow) dims.push([overflow, { axis: md.axis, min: x, peak: x, max: xNext }]);
+		if (x) {
+			convertNonZeroStop(md.axis, offset, yNegative, yPositive, x, xPrev, xNext, stop, dims);
 		} else {
-			const overflow = yLeft - yNonInclusive;
-			if (overflow) dims.push([overflow, { axis: md.axis, min: xPrev, peak: x, max: x }]);
+			convertZeroStop(md.axis, offset, yNegative, yPositive, x, xPrev, xNext, stop, dims);
 		}
 	}
 
 	return { offset, dims };
+}
+
+function convertNonZeroStop(
+	axis: Axis,
+	offset: number,
+	yNegative: number,
+	yPositive: number,
+	x: number,
+	xPrev: number,
+	xNext: number,
+	stop: MultiLinearStop,
+	dims: [number, OtMasterDim][]
+) {
+	const yLeft = stop.left - offset,
+		yRight = stop.right - offset;
+	const yBase = x < 0 ? -yNegative * x : yPositive * x,
+		yNonInclusive = stop.inclusive ? yLeft : yRight;
+
+	const overflowNonInclusive = yNonInclusive - yBase;
+	if (overflowNonInclusive) {
+		dims.push([overflowNonInclusive, { axis, min: xPrev, peak: x, max: xNext }]);
+	}
+	if (stop.inclusive === 1) {
+		const overflow = yRight - yNonInclusive;
+		if (overflow) dims.push([overflow, { axis, min: x, peak: x, max: xNext }]);
+	} else {
+		const overflow = yLeft - yNonInclusive;
+		if (overflow) dims.push([overflow, { axis, min: xPrev, peak: x, max: x }]);
+	}
+}
+
+function convertZeroStop(
+	axis: Axis,
+	offset: number,
+	yNegative: number,
+	yPositive: number,
+	x: number,
+	xPrev: number,
+	xNext: number,
+	stop: MultiLinearStop,
+	dims: [number, OtMasterDim][]
+) {
+	const yLeft = stop.left - offset,
+		yRight = stop.right - offset;
+	const smallStep = 1 / (1 << 14);
+
+	if (stop.inclusive === 0) {
+		const overflow = ((yRight - yLeft) * (xNext - x - smallStep)) / (xNext - x);
+		if (overflow) {
+			dims.push([overflow, { axis, min: smallStep, peak: smallStep, max: xNext }]);
+		}
+	} else {
+		const overflow = ((yLeft - yRight) * (x - xPrev - smallStep)) / (x - xPrev);
+		if (overflow) {
+			dims.push([overflow, { axis, min: xPrev, peak: -smallStep, max: -smallStep }]);
+		}
+	}
 }
 
 export function evalDimConversionResult(dr: DimConversionResult, x: number) {

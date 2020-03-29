@@ -31,6 +31,10 @@ test(
 	"Dim conversion test 7",
 	validateDim([-1, Cr(-1)], [-0.5, R(-0.25, 1)], [+0.5, L(-0.25, 1)], [+1, Cl(0.25)])
 );
+test(
+	"Dim conversion test 8",
+	validateDim([-1, Cr(-1)], [0, R(-0.25, 1)], [+0.5, L(-0.25, 1)], [+1, Cl(0.25)])
+);
 
 function validateDim(...pts: [number, MultiLinearStop][]) {
 	const mdRaw = { axis: "axis", points: pts };
