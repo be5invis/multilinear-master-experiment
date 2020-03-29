@@ -10,30 +10,30 @@ import { evalMultiLinearMaster, evalMultiLinearMasterDim } from "./eval";
 import { MultiLinearStop } from "./interface";
 import { regularizeMultiLinearMasterDim } from "./regularize";
 
-const Cl = (x: number): MultiLinearStop => ({ left: x, right: x, inclusive: 0 });
-const Cr = (x: number): MultiLinearStop => ({ left: x, right: x, inclusive: 1 });
-const L = (x: number, y: number): MultiLinearStop => ({ left: x, right: y, inclusive: 0 });
-const R = (x: number, y: number): MultiLinearStop => ({ left: x, right: y, inclusive: 1 });
+const C = (x: number): MultiLinearStop => ({ left: x, right: x, at: x });
+const L = (x: number, y: number): MultiLinearStop => ({ left: x, right: y, at: x });
+const R = (x: number, y: number): MultiLinearStop => ({ left: x, right: y, at: y });
+const D = (x: number, y: number, z: number): MultiLinearStop => ({ left: x, at: y, right: z });
 
-test("Dim conversion test 1", validateDim([-0.5, Cr(1)], [0.5, Cl(-1)]));
-test("Dim conversion test 2", validateDim([-1, Cr(0)], [0, Cr(0)], [+1, Cl(0)]));
+test("Dim conversion test 1", validateDim([-0.5, C(1)], [0.5, C(-1)]));
+test("Dim conversion test 2", validateDim([-1, C(0)], [0, C(0)], [+1, C(0)]));
 test(
 	"Dim conversion test 3",
-	validateDim([-2 / 4, Cr(-1)], [-1 / 4, L(1, -1)], [1 / 8, R(-1, 1)], [5 / 8, Cl(1)])
+	validateDim([-2 / 4, C(-1)], [-1 / 4, D(1, 0, -1)], [1 / 8, D(-1, 0.25, 1)], [5 / 8, C(1)])
 );
 test(
 	"Dim conversion test 4",
-	validateDim([-2 / 4, Cr(0)], [-1 / 4, R(0, -1)], [1 / 8, L(-1, 0)], [5 / 8, Cl(1)])
+	validateDim([-2 / 4, C(0)], [-1 / 4, R(0, -1)], [1 / 8, L(-1, 0)], [5 / 8, C(1)])
 );
 test("Dim conversion test 5", validateDim());
-test("Dim conversion test 6", validateDim([-1, Cr(0.25)]));
+test("Dim conversion test 6", validateDim([-1, C(0.25)]));
 test(
 	"Dim conversion test 7",
-	validateDim([-1, Cr(-1)], [-0.5, R(-0.25, 1)], [+0.5, L(-0.25, 1)], [+1, Cl(0.25)])
+	validateDim([-1, C(-1)], [-0.5, R(-0.25, 1)], [+0.5, L(-0.25, 1)], [+1, C(0.25)])
 );
 test(
 	"Dim conversion test 8",
-	validateDim([-1, Cr(-1)], [0, R(-0.25, 1)], [+0.5, L(-0.25, 1)], [+1, Cl(0.25)])
+	validateDim([-1, C(-1)], [0, D(-0.25, 0, 0.25)], [+0.5, L(-0.25, 1)], [+1, C(0.25)])
 );
 
 function validateDim(...pts: [number, MultiLinearStop][]) {
@@ -57,14 +57,14 @@ test(
 	"Master conversion test 1",
 	validateMaster(
 		[
-			[-0.5, Cr(1)],
-			[0.5, Cl(-1)],
+			[-0.5, C(1)],
+			[0.5, C(-1)],
 		],
 		[
-			[-2 / 3, Cr(0)],
-			[-1 / 3, Cl(1)],
-			[1 / 3, Cl(-1)],
-			[2 / 3, Cl(0)],
+			[-2 / 3, C(0)],
+			[-1 / 3, C(1)],
+			[1 / 3, C(-1)],
+			[2 / 3, C(0)],
 		]
 	)
 );
@@ -73,21 +73,21 @@ test(
 	"Master conversion test 3",
 	validateMaster(
 		[
-			[-2 / 3, Cr(-1)],
+			[-2 / 3, C(-1)],
 			[-1 / 3, L(1, -1)],
 			[1 / 3, R(-1, 1)],
-			[2 / 3, Cl(1)],
+			[2 / 3, C(1)],
 		],
 		[
-			[-2 / 3, Cr(0)],
-			[-1 / 3, R(0, -1)],
-			[1 / 3, L(-1, 0)],
-			[2 / 3, Cl(1)],
+			[-2 / 3, C(0)],
+			[-1 / 3, D(0, 1, -1)],
+			[1 / 3, D(-1, 1, 0)],
+			[2 / 3, C(1)],
 		],
 		[
-			[-1, Cr(-1)],
-			[0, Cr(0.25)],
-			[+1, Cl(0.25)],
+			[-1, C(-1)],
+			[0, D(-1, 0, 1)],
+			[+1, C(0.25)],
 		]
 	)
 );

@@ -6,7 +6,7 @@ export type OtMaster = OtMasterDim[];
 
 export type MultiLinearMasterDim = { axis: Axis; points: [number, MultiLinearStop][] };
 export type MultiLinearMaster = MultiLinearMasterDim[];
-export type MultiLinearStop = { left: number; right: number; inclusive: 0 | 1 };
+export type MultiLinearStop = { left: number; at: number; right: number };
 
 export type DimConversionResult = { offset: number; dims: [number, OtMasterDim][] };
 export type MasterConversionResult = { offset: number; masters: [number, OtMaster][] };

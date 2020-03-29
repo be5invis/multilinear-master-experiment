@@ -53,20 +53,29 @@ function convertNonZeroStop(
 	dims: [number, OtMasterDim][]
 ) {
 	const yLeft = stop.left - offset,
+		yAt = stop.at - offset,
 		yRight = stop.right - offset;
 	const yBase = x < 0 ? -yNegative * x : yPositive * x,
-		yNonInclusive = stop.inclusive ? yLeft : yRight;
+		yNonInclusive = yLeft === yAt ? yRight : yLeft;
+	let yInclusive = yNonInclusive;
 
 	const overflowNonInclusive = yNonInclusive - yBase;
 	if (overflowNonInclusive) {
 		dims.push([overflowNonInclusive, { axis, min: xPrev, peak: x, max: xNext }]);
 	}
-	if (stop.inclusive === 1) {
+	if (yRight !== yNonInclusive) {
+		yInclusive = yRight;
 		const overflow = yRight - yNonInclusive;
 		if (overflow) dims.push([overflow, { axis, min: x, peak: x, max: xNext }]);
-	} else {
+	}
+	if (yLeft !== yNonInclusive) {
+		yInclusive = yLeft;
 		const overflow = yLeft - yNonInclusive;
 		if (overflow) dims.push([overflow, { axis, min: xPrev, peak: x, max: x }]);
+	}
+	if (yAt !== yLeft && yAt !== yRight) {
+		const overflow = yAt - yInclusive;
+		if (overflow) dims.push([overflow, { axis, min: x, peak: x, max: x }]);
 	}
 }
 
@@ -82,16 +91,18 @@ function convertZeroStop(
 	dims: [number, OtMasterDim][]
 ) {
 	const yLeft = stop.left - offset,
+		yAt = stop.at - offset,
 		yRight = stop.right - offset;
 	const smallStep = 1 / (1 << 14);
 
-	if (stop.inclusive === 0) {
-		const overflow = ((yRight - yLeft) * (xNext - x - smallStep)) / (xNext - x);
+	if (yRight !== yAt) {
+		const overflow = ((yRight - yAt) * (xNext - x - smallStep)) / (xNext - x);
 		if (overflow) {
 			dims.push([overflow, { axis, min: smallStep, peak: smallStep, max: xNext }]);
 		}
-	} else {
-		const overflow = ((yLeft - yRight) * (x - xPrev - smallStep)) / (x - xPrev);
+	}
+	if (yLeft !== yAt) {
+		const overflow = ((yLeft - yAt) * (x - xPrev - smallStep)) / (x - xPrev);
 		if (overflow) {
 			dims.push([overflow, { axis, min: xPrev, peak: -smallStep, max: -smallStep }]);
 		}
