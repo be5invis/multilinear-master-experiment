@@ -12,16 +12,32 @@ import {
 } from "./interface";
 import { regularizeMultiLinearMasterDim } from "./regularize";
 
+const F2D14Step = 1 / 0x4000;
+
 export function convertDim(mdRaw: MultiLinearMasterDim): DimConversionResult {
 	const md = regularizeMultiLinearMasterDim(mdRaw);
-	// We assume it is continuous at -1, 0 and +1
-	const offset = normalize(evalMultiLinearMasterDim(md, 0));
-	const yNegative = normalize(md.points[0][1].right - offset);
-	const yPositive = normalize(md.points[md.points.length - 1][1].left - offset);
-
 	let dims: [number, OtMasterDim][] = [];
+	const offset = normalize(evalMultiLinearMasterDim(md, 0));
+
+	// Handle start boundary
+	const syNegative = md.points[0][1];
+	const yNegative = normalize(syNegative.right - offset);
+	const yNegativeAt = normalize(syNegative.right - offset);
+
 	if (yNegative) dims.push([yNegative, { axis: md.axis, min: -1, peak: -1, max: 0 }]);
+	if (yNegativeAt !== yNegative) {
+		dims.push([yNegativeAt - yNegative, { axis: md.axis, min: -1, peak: -1, max: -1 }]);
+	}
+
+	// Handle end boundary
+	const syPositive = md.points[md.points.length - 1][1];
+	const yPositive = normalize(syPositive.left - offset);
+	const yPositiveAt = normalize(syPositive.at - offset);
+
 	if (yPositive) dims.push([yPositive, { axis: md.axis, min: 0, peak: +1, max: +1 }]);
+	if (yPositiveAt !== yPositive) {
+		dims.push([yPositiveAt - yPositive, { axis: md.axis, min: 1, peak: 1, max: 1 }]);
+	}
 
 	for (let t = 1; t + 1 < md.points.length; t++) {
 		const x = md.points[t][0],
@@ -52,9 +68,9 @@ function convertNonZeroStop(
 	stop: MultiLinearStop,
 	dims: [number, OtMasterDim][]
 ) {
-	const yLeft = stop.left - offset,
-		yAt = stop.at - offset,
-		yRight = stop.right - offset;
+	const yLeft = normalize(stop.left - offset),
+		yAt = normalize(stop.at - offset),
+		yRight = normalize(stop.right - offset);
 	const yBase = x < 0 ? -yNegative * x : yPositive * x,
 		yNonInclusive = yLeft === yAt ? yRight : yLeft;
 	let yInclusive = yNonInclusive;
@@ -90,21 +106,20 @@ function convertZeroStop(
 	stop: MultiLinearStop,
 	dims: [number, OtMasterDim][]
 ) {
-	const yLeft = stop.left - offset,
-		yAt = stop.at - offset,
-		yRight = stop.right - offset;
-	const smallStep = 1 / (1 << 14);
+	const yLeft = normalize(stop.left - offset),
+		yAt = normalize(stop.at - offset),
+		yRight = normalize(stop.right - offset);
 
 	if (yRight !== yAt) {
-		const overflow = ((yRight - yAt) * (xNext - x - smallStep)) / (xNext - x);
+		const overflow = ((yRight - yAt) * (xNext - x - F2D14Step)) / (xNext - x);
 		if (overflow) {
-			dims.push([overflow, { axis, min: smallStep, peak: smallStep, max: xNext }]);
+			dims.push([overflow, { axis, min: F2D14Step, peak: F2D14Step, max: xNext }]);
 		}
 	}
 	if (yLeft !== yAt) {
-		const overflow = ((yLeft - yAt) * (x - xPrev - smallStep)) / (x - xPrev);
+		const overflow = ((yLeft - yAt) * (x - xPrev - F2D14Step)) / (x - xPrev);
 		if (overflow) {
-			dims.push([overflow, { axis, min: xPrev, peak: -smallStep, max: -smallStep }]);
+			dims.push([overflow, { axis, min: xPrev, peak: -F2D14Step, max: -F2D14Step }]);
 		}
 	}
 }
